@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:infinity_scrolling_image_gallery/utility/image_api.dart';
 import 'package:infinity_scrolling_image_gallery/types/image.dart'
     as infinity_scrolling_image_gallery;
+import 'package:share_plus/share_plus.dart';
 
 void main() {
   runApp(const MainApp());
@@ -27,6 +28,8 @@ class _MainAppState extends State<MainApp> {
   bool _loading = false;
 
   bool _debounce = false;
+
+  int _showActions = -1;
 
   int _page = 1;
 
@@ -94,67 +97,115 @@ class _MainAppState extends State<MainApp> {
         Random().nextInt(255), 1.0);
   }
 
+  void shareImageUrl(String imageUrl) {
+    Share.shareUri(Uri.parse(imageUrl));
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: Column(
-          children: [
-            Text("Page: $_page"),
-            Expanded(
-              child: ListView.builder(
-                controller: _controller,
-                itemCount: _images.length,
-                itemBuilder: (context, index) => CachedNetworkImage(
-                    imageUrl: _images[index].downloadUrl,
-                    progressIndicatorBuilder:
-                        (context, child, downloadProgress) => AspectRatio(
-                              aspectRatio:
-                                  _images[index].width / _images[index].height,
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width,
-                                child: Center(
-                                  child: downloadProgress.progress == null
-                                      ? const CircularProgressIndicator()
-                                      : CircularProgressIndicator(
-                                          value: downloadProgress.progress,
-                                        ),
+        body: GestureDetector(
+          onVerticalDragDown: (_) {
+            if (_showActions != -1) {
+              setState(() {
+                _showActions = -1;
+              });
+            }
+          },
+          child: Column(
+            children: [
+              Text("Page: $_page"),
+              Expanded(
+                child: ListView.builder(
+                  controller: _controller,
+                  itemCount: _images.length,
+                  itemBuilder: (context, index) => InkWell(
+                    onLongPress: () {
+                      setState(() {
+                        _showActions = index;
+                      });
+                    },
+                    child: Stack(
+                      children: [
+                        CachedNetworkImage(
+                            imageUrl: _images[index].downloadUrl,
+                            progressIndicatorBuilder: (context, child,
+                                    downloadProgress) =>
+                                AspectRatio(
+                                  aspectRatio: _images[index].width /
+                                      _images[index].height,
+                                  child: SizedBox(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: Center(
+                                      child: downloadProgress.progress == null
+                                          ? const CircularProgressIndicator()
+                                          : CircularProgressIndicator(
+                                              value: downloadProgress.progress,
+                                            ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                    errorWidget: (context, url, error) {
-                      debugPrint("fetch image error for $url");
-                      debugPrint(error.toString());
+                            errorWidget: (context, url, error) {
+                              debugPrint("fetch image error for $url");
+                              debugPrint(error.toString());
 
-                      return AspectRatio(
-                        aspectRatio:
-                            _images[index].width / _images[index].height,
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width,
-                          child: const Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.error,
-                                  color: Colors.red,
+                              return AspectRatio(
+                                aspectRatio: _images[index].width /
+                                    _images[index].height,
+                                child: SizedBox(
+                                  width: MediaQuery.of(context).size.width,
+                                  child: const Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.error,
+                                          color: Colors.red,
+                                        ),
+                                        Text("Unable to load image")
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                                Text("Unable to load image")
-                              ],
-                            ),
+                              );
+                            }),
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 200),
+                          top: 8.0,
+                          right: _showActions == index ? 8.0 : -64.0,
+                          child: Column(
+                            children: [
+                              IconButton(
+                                  onPressed: () =>
+                                      shareImageUrl(_images[index].downloadUrl),
+                                  icon: const Icon(
+                                    Icons.share,
+                                    color: Colors.white,
+                                  )),
+                              IconButton(
+                                  onPressed: () =>
+                                      shareImageUrl(_images[index].downloadUrl),
+                                  icon: const Icon(
+                                    Icons.download,
+                                    color: Colors.white,
+                                  ))
+                            ],
                           ),
-                        ),
-                      );
-                    }),
-              ),
-            ),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(4.0),
-                child: Center(
-                  child: CircularProgressIndicator(),
+                        )
+                      ],
+                    ),
+                  ),
                 ),
-              )
-          ],
+              ),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(4.0),
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+            ],
+          ),
         ),
       ),
     );
