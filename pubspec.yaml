@@ -10,6 +10,7 @@ dependencies:
   cached_network_image: ^3.3.1
   flutter:
     sdk: flutter
+  gal: ^2.3.0
   http: ^1.2.1
   json_annotation: ^4.9.0
   share_plus: ^7.2.2
