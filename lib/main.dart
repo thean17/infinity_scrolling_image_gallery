@@ -202,35 +202,35 @@ class _MainAppState extends State<MainApp> {
   }
 
   Widget _buildExpandedImage(BuildContext context) {
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-          color: _expandImageIndex == -1 ? Colors.transparent : Colors.black,
-          width: MediaQuery.of(context).size.width,
-          height:
-              _expandImageIndex == -1 ? 0 : MediaQuery.of(context).size.height,
-          child: GestureDetector(
-            onPanEnd: (_) => setState(() {
-              _expandImageIndex = -1;
-            }),
-            child: _expandImageIndex != -1
-                ? Stack(
-                    children: [
-                      Center(
-                        child: _buildImage(_images[_expandImageIndex]),
-                      ),
-                      Align(
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        color: _expandImageIndex == -1 ? Colors.transparent : Colors.black,
+        width: MediaQuery.of(context).size.width,
+        height:
+            _expandImageIndex == -1 ? 0 : MediaQuery.of(context).size.height,
+        child: GestureDetector(
+          onPanEnd: (_) => setState(() {
+            _expandImageIndex = -1;
+          }),
+          child: _expandImageIndex != -1
+              ? Stack(
+                  children: [
+                    Center(
+                      child: _buildImage(_images[_expandImageIndex]),
+                    ),
+                    SafeArea(
+                      child: Align(
                         alignment: Alignment.topRight,
                         child: _buildImageActionButton(
                             context, _images[_expandImageIndex]),
-                      )
-                    ],
-                  )
-                : null,
-          ),
+                      ),
+                    )
+                  ],
+                )
+              : null,
         ),
       ),
     );
