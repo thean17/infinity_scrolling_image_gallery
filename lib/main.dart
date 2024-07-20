@@ -32,7 +32,7 @@ class _MainAppState extends State<MainApp> {
 
   bool _downloadingImage = false;
 
-  int _showActions = -1;
+  int _expandImageIndex = -1;
 
   int _page = 1;
 
@@ -122,127 +122,169 @@ class _MainAppState extends State<MainApp> {
     }
   }
 
+  Widget _buildImage(infinity_scrolling_image_gallery.Image image) {
+    return CachedNetworkImage(
+        imageUrl: image.downloadUrl,
+        progressIndicatorBuilder: (context, child, downloadProgress) =>
+            AspectRatio(
+              aspectRatio: image.width / image.height,
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width,
+                child: Center(
+                  child: downloadProgress.progress == null
+                      ? const CircularProgressIndicator()
+                      : CircularProgressIndicator(
+                          value: downloadProgress.progress,
+                        ),
+                ),
+              ),
+            ),
+        errorWidget: (context, url, error) {
+          debugPrint("fetch image error for $url");
+          debugPrint(error.toString());
+
+          return AspectRatio(
+            aspectRatio: image.width / image.height,
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width,
+              child: const Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.error,
+                      color: Colors.red,
+                    ),
+                    Text("Unable to load image")
+                  ],
+                ),
+              ),
+            ),
+          );
+        });
+  }
+
+  Widget _buildImageActionButton(
+      BuildContext context, infinity_scrolling_image_gallery.Image image) {
+    return IconButton(
+      onPressed: () => showModalBottomSheet(
+          context: context,
+          builder: (context) => BottomSheet(
+                builder: (context) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      decoration: const BoxDecoration(
+                          border: Border(
+                              bottom: BorderSide(
+                        color: Colors.black45,
+                      ))),
+                      child: TextButton(
+                        onPressed: () {
+                          shareImageUrl(image.downloadUrl);
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text("Share Link"),
+                      ),
+                    ),
+                    TextButton(
+                        onPressed: () {
+                          downloadImage(image.downloadUrl);
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text("Save Image"))
+                  ],
+                ),
+                onClosing: () {},
+              )),
+      icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+    );
+  }
+
+  Widget _buildExpandedImage(BuildContext context) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          color: _expandImageIndex == -1 ? Colors.transparent : Colors.black,
+          width: MediaQuery.of(context).size.width,
+          height:
+              _expandImageIndex == -1 ? 0 : MediaQuery.of(context).size.height,
+          child: GestureDetector(
+            onPanEnd: (_) => setState(() {
+              _expandImageIndex = -1;
+            }),
+            child: _expandImageIndex != -1
+                ? Stack(
+                    children: [
+                      Center(
+                        child: _buildImage(_images[_expandImageIndex]),
+                      ),
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: _buildImageActionButton(
+                            context, _images[_expandImageIndex]),
+                      )
+                    ],
+                  )
+                : null,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: Stack(
-          children: [
-            GestureDetector(
-              onVerticalDragDown: (_) {
-                if (_showActions != -1) {
-                  setState(() {
-                    _showActions = -1;
-                  });
-                }
-              },
-              child: Column(
+        body: Builder(builder: (context) {
+          return Stack(
+            children: [
+              Column(
                 children: [
-                  Text("Page: $_page"),
                   Expanded(
                     child: ListView.builder(
                       controller: _controller,
                       itemCount: _images.length,
-                      itemBuilder: (context, index) => InkWell(
-                        onLongPress: () {
-                          setState(() {
-                            _showActions = index;
-                          });
-                        },
-                        child: Stack(
-                          children: [
-                            CachedNetworkImage(
-                                imageUrl: _images[index].downloadUrl,
-                                progressIndicatorBuilder: (context, child,
-                                        downloadProgress) =>
-                                    AspectRatio(
-                                      aspectRatio: _images[index].width /
-                                          _images[index].height,
-                                      child: SizedBox(
-                                        width:
-                                            MediaQuery.of(context).size.width,
-                                        child: Center(
-                                          child: downloadProgress.progress ==
-                                                  null
-                                              ? const CircularProgressIndicator()
-                                              : CircularProgressIndicator(
-                                                  value:
-                                                      downloadProgress.progress,
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                errorWidget: (context, url, error) {
-                                  debugPrint("fetch image error for $url");
-                                  debugPrint(error.toString());
-
-                                  return AspectRatio(
-                                    aspectRatio: _images[index].width /
-                                        _images[index].height,
-                                    child: SizedBox(
-                                      width: MediaQuery.of(context).size.width,
-                                      child: const Center(
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                              Icons.error,
-                                              color: Colors.red,
-                                            ),
-                                            Text("Unable to load image")
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 200),
-                              top: 8.0,
-                              right: _showActions == index ? 8.0 : -64.0,
-                              child: Column(
-                                children: [
-                                  IconButton(
-                                      onPressed: () => shareImageUrl(
-                                          _images[index].downloadUrl),
-                                      icon: const Icon(
-                                        Icons.share,
-                                        color: Colors.white,
-                                      )),
-                                  IconButton(
-                                      onPressed: () => downloadImage(
-                                          _images[index].downloadUrl),
-                                      icon: const Icon(
-                                        Icons.download,
-                                        color: Colors.white,
-                                      ))
-                                ],
-                              ),
-                            )
-                          ],
-                        ),
+                      itemBuilder: (context, index) => Stack(
+                        children: [
+                          InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _expandImageIndex = index;
+                                });
+                              },
+                              child: _buildImage(_images[index])),
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: _buildImageActionButton(
+                                context, _images[index]),
+                          )
+                        ],
                       ),
                     ),
                   ),
                   if (_loading)
-                    const Padding(
-                      padding: EdgeInsets.all(4.0),
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                    const LinearProgressIndicator(
+                      backgroundColor: Colors.black,
                     )
                 ],
               ),
-            ),
-            if (_downloadingImage)
-              Positioned.fill(
-                  child: Container(
-                color: Colors.black.withAlpha(192),
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ))
-          ],
-        ),
+              _buildExpandedImage(context),
+              if (_downloadingImage)
+                Positioned.fill(
+                    child: Container(
+                  color: Colors.black.withAlpha(192),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )),
+            ],
+          );
+        }),
       ),
     );
   }
