@@ -10,6 +10,7 @@ import 'package:infinity_scrolling_image_gallery/reducers/root_reducer.dart';
 import 'package:infinity_scrolling_image_gallery/utility/image_api.dart';
 import 'package:infinity_scrolling_image_gallery/types/image.dart'
     as infinity_scrolling_image_gallery;
+import 'package:infinity_scrolling_image_gallery/widget/infinity_list.dart';
 import 'package:infinity_scrolling_image_gallery/widget/pull_to_refresh.dart';
 import 'package:redux/redux.dart';
 import 'package:share_plus/share_plus.dart';
@@ -33,22 +34,9 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   final _api = ImageApi();
 
-  bool _debounce = false;
-
   bool _downloadingImage = false;
 
   int _page = 1;
-
-  final double _triggerFetchScrollThreshold = 0.8;
-
-  final _controller = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-
-    _registerScrollListener();
-  }
 
   Future<void> _refreshImages() async {
     try {
@@ -77,34 +65,6 @@ class _MainAppState extends State<MainApp> {
 
       StoreProvider.of<RootState>(context).dispatch(LoadImagesErrorAction());
     }
-  }
-
-  void _debounceScrollHandler() {
-    _debounce = true;
-    setState(() {});
-
-    Timer(const Duration(milliseconds: 250), () {
-      _debounce = false;
-      setState(() {});
-    });
-  }
-
-  void _registerScrollListener() {
-    _controller.addListener(() {
-      var nextPageTrigger =
-          _triggerFetchScrollThreshold * _controller.position.maxScrollExtent;
-
-      if (_controller.position.pixels > nextPageTrigger &&
-          !StoreProvider.of<RootState>(context).state.loading &&
-          !_debounce) {
-        _page += 1;
-        _loadMoreImages().then((_) {
-          _debounceScrollHandler();
-        }).catchError((_) {
-          _debounceScrollHandler();
-        });
-      }
-    });
   }
 
   void shareImageUrl(String imageUrl) {
@@ -281,8 +241,13 @@ class _MainAppState extends State<MainApp> {
 
                             _refreshImages();
                           },
-                          child: ListView.builder(
-                            controller: _controller,
+                          child: InfinityList(
+                            load: () {
+                              _page += 1;
+                              _loadMoreImages();
+                            },
+                            triggerLoadThreshold: 0.8,
+                            loading: state.loading,
                             itemCount: state.images.images.length,
                             itemBuilder: (context, index) => Stack(
                               children: [
@@ -303,13 +268,6 @@ class _MainAppState extends State<MainApp> {
                         ),
                       ),
                     ),
-                    StoreConnector<RootState, bool>(
-                        converter: (store) => store.state.loading,
-                        builder: (context, loading) => loading
-                            ? const LinearProgressIndicator(
-                                backgroundColor: Colors.black,
-                              )
-                            : const SizedBox.shrink()),
                   ],
                 ),
                 _buildExpandedImage(context),
