@@ -7,6 +7,7 @@ import 'package:gal/gal.dart';
 import 'package:infinity_scrolling_image_gallery/utility/image_api.dart';
 import 'package:infinity_scrolling_image_gallery/types/image.dart'
     as infinity_scrolling_image_gallery;
+import 'package:infinity_scrolling_image_gallery/widget/pull_to_refresh.dart';
 import 'package:share_plus/share_plus.dart';
 
 void main() {
@@ -246,24 +247,34 @@ class _MainAppState extends State<MainApp> {
               Column(
                 children: [
                   Expanded(
-                    child: ListView.builder(
-                      controller: _controller,
-                      itemCount: _images.length,
-                      itemBuilder: (context, index) => Stack(
-                        children: [
-                          InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _expandImageIndex = index;
-                                });
-                              },
-                              child: _buildImage(_images[index])),
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: _buildImageActionButton(
-                                context, _images[index]),
-                          )
-                        ],
+                    child: PullToRefresh(
+                      disabled: _loading,
+                      triggerThreshold: 300.0,
+                      onRefresh: () {
+                        _images.clear();
+                        _page = 1;
+                        setState(() {});
+                        _fetchImages();
+                      },
+                      child: ListView.builder(
+                        controller: _controller,
+                        itemCount: _images.length,
+                        itemBuilder: (context, index) => Stack(
+                          children: [
+                            InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _expandImageIndex = index;
+                                  });
+                                },
+                                child: _buildImage(_images[index])),
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: _buildImageActionButton(
+                                  context, _images[index]),
+                            )
+                          ],
+                        ),
                       ),
                     ),
                   ),
