@@ -13,6 +13,10 @@ class Image {
   @JsonKey(name: "download_url")
   final String downloadUrl;
 
+  double get aspectRatio {
+    return width / height;
+  }
+
   Image(
       {required this.id,
       required this.author,
