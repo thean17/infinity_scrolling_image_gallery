@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -94,11 +93,6 @@ class _MainAppState extends State<MainApp> {
         });
       }
     });
-  }
-
-  Color randomColor() {
-    return Color.fromRGBO(Random().nextInt(255), Random().nextInt(255),
-        Random().nextInt(255), 1.0);
   }
 
   void shareImageUrl(String imageUrl) {
