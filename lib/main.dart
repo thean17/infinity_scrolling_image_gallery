@@ -234,7 +234,19 @@ class _MainAppState extends State<MainApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(
+          appBarTheme: const AppBarTheme(
+              shadowColor: Colors.black, scrolledUnderElevation: 10),
+          colorSchemeSeed: const Color.fromARGB(255, 0, 132, 255),
+          useMaterial3: true),
       home: Scaffold(
+        appBar: AppBar(
+          shadowColor: Colors.black,
+          title: Title(
+            color: Colors.black,
+            child: const Text("Infinity Scroll Image Gallery"),
+          ),
+        ),
         body: Builder(builder: (context) {
           return Stack(
             children: [
