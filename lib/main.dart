@@ -95,40 +95,34 @@ class _MainAppState extends State<MainApp> {
 
   Widget _buildImage(infinity_scrolling_image_gallery.Image image) {
     return CachedNetworkImage(
+        fit: BoxFit
+            .fill, // to remove artifacts caused by difference of resized image size and this widget size
+        maxWidthDiskCache: MediaQuery.of(context).size.width.toInt(),
+        maxHeightDiskCache:
+            MediaQuery.of(context).size.width.toInt() ~/ image.aspectRatio,
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.width / image.aspectRatio,
         imageUrl: image.downloadUrl,
-        progressIndicatorBuilder: (context, child, downloadProgress) =>
-            AspectRatio(
-              aspectRatio: image.width / image.height,
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width,
-                child: Center(
-                  child: downloadProgress.progress == null
-                      ? const CircularProgressIndicator()
-                      : CircularProgressIndicator(
-                          value: downloadProgress.progress,
-                        ),
-                ),
-              ),
+        progressIndicatorBuilder: (context, child, downloadProgress) => Center(
+              child: downloadProgress.progress == null
+                  ? const CircularProgressIndicator()
+                  : CircularProgressIndicator(
+                      value: downloadProgress.progress,
+                    ),
             ),
         errorWidget: (context, url, error) {
           debugPrint("fetch image error for $url");
           debugPrint(error.toString());
 
-          return AspectRatio(
-            aspectRatio: image.width / image.height,
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width,
-              child: const Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.error,
-                      color: Colors.red,
-                    ),
-                    Text("Unable to load image")
-                  ],
+          return const Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.error,
+                  color: Colors.red,
                 ),
-              ),
+                Text("Unable to load image")
+              ],
             ),
           );
         });
