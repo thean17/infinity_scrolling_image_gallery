@@ -4,12 +4,13 @@ import 'package:infinity_scrolling_image_gallery/reducers/loading_reducer.dart';
 class RootState {
   final ImagesState images;
 
-  final bool loading;
+  final LoadingState loading;
 
   RootState({required this.loading, required this.images});
 
   factory RootState.empty() {
-    return RootState(loading: false, images: ImagesState.empty());
+    return RootState(
+        loading: LoadingState.empty(), images: ImagesState.empty());
   }
 }
 

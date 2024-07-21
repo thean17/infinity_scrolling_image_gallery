@@ -41,7 +41,7 @@ class _MainAppState extends State<MainApp> {
 
   Future<void> _refreshImages() async {
     try {
-      StoreProvider.of<RootState>(context).dispatch(LoadImagesAction());
+      StoreProvider.of<RootState>(context).dispatch(RefreshImagesAction());
 
       final images = await _api.getImages();
 
@@ -49,7 +49,8 @@ class _MainAppState extends State<MainApp> {
     } catch (error) {
       debugPrint(error.toString());
 
-      StoreProvider.of<RootState>(context).dispatch(LoadImagesErrorAction());
+      StoreProvider.of<RootState>(context)
+          .dispatch(RefreshImagesErrorAction(error));
     }
   }
 
@@ -234,27 +235,36 @@ class _MainAppState extends State<MainApp> {
           body: Builder(builder: (context) {
             return Stack(
               children: [
-                Column(
-                  children: [
-                    Expanded(
-                      child: StoreConnector<RootState, RootState>(
-                        converter: (store) => store.state,
-                        builder: (context, state) => PullToRefresh(
-                          disabled: state.loading,
+                StoreConnector<RootState, RootState>(
+                  converter: (store) => store.state,
+                  builder: (context, state) => state.loading.error != null
+                      ? PullToRefresh(
+                          disabled: state.loading.loading,
                           triggerThreshold: 300.0,
-                          onRefresh: () {
-                            StoreProvider.of<RootState>(context)
-                                .dispatch(RefreshImagesAction());
-
-                            _refreshImages();
-                          },
+                          onRefresh: () => _refreshImages(),
+                          child: ListView(
+                            children: [
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.75,
+                                child: const Center(
+                                  child: Text(
+                                      'Error occurred. Unabled to fetch images.'),
+                                ),
+                              )
+                            ],
+                          ))
+                      : PullToRefresh(
+                          disabled: state.loading.loading,
+                          triggerThreshold: 300.0,
+                          onRefresh: () => _refreshImages(),
                           child: InfinityList(
                             load: () {
                               _page += 1;
                               _loadMoreImages();
                             },
                             triggerLoadThreshold: 0.8,
-                            loading: state.loading,
+                            loading: state.loading.loading,
                             itemCount: state.images.images.length,
                             itemBuilder: (context, index) => Stack(
                               children: [
@@ -273,9 +283,6 @@ class _MainAppState extends State<MainApp> {
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ],
                 ),
                 _buildExpandedImage(context),
                 if (_downloadingImage)

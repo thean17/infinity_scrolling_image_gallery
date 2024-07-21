@@ -4,6 +4,17 @@ class LoadImagesAction {}
 
 class LoadImagesErrorAction {}
 
+class RefreshImagesErrorAction {
+  final dynamic error;
+
+  RefreshImagesErrorAction(this.error);
+
+  @override
+  String toString() {
+    return 'RefreshImagesErrorAction{error: $error}';
+  }
+}
+
 class RefreshImagesAction {}
 
 class ExpandImageAction {
