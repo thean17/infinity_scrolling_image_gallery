@@ -108,6 +108,8 @@ class _MainAppState extends State<MainApp> {
       final bytes = await _api.downloadImage(imageUrl);
 
       await Gal.putImageBytes(bytes, album: "Download", name: "download");
+
+      Gal.open();
     } catch (error) {
       debugPrint(error.toString());
     } finally {
