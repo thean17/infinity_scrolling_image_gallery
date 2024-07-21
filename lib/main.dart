@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:gal/gal.dart';
 import 'package:infinity_scrolling_image_gallery/actions/actions.dart';
@@ -212,10 +213,16 @@ class _MainAppState extends State<MainApp> {
       onInit: (store) => _refreshImages(),
       builder: (_, __) => MaterialApp(
         theme: ThemeData(
-            appBarTheme: const AppBarTheme(
-                shadowColor: Colors.black, scrolledUnderElevation: 10),
-            colorSchemeSeed: const Color.fromARGB(255, 0, 132, 255),
-            useMaterial3: true),
+          colorScheme: const ColorScheme.light(
+            primary: Colors.blue,
+          ),
+          appBarTheme: Theme.of(context).appBarTheme.copyWith(
+              color: Colors.blue,
+              shadowColor: Colors.black,
+              scrolledUnderElevation: 10,
+              systemOverlayStyle:
+                  SystemUiOverlayStyle(statusBarColor: Colors.blue[100])),
+        ),
         home: Scaffold(
           appBar: AppBar(
             shadowColor: Colors.black,
