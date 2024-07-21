@@ -2,15 +2,25 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:gal/gal.dart';
+import 'package:infinity_scrolling_image_gallery/actions/actions.dart';
+import 'package:infinity_scrolling_image_gallery/reducers/images_reducer.dart';
+import 'package:infinity_scrolling_image_gallery/reducers/root_reducer.dart';
 import 'package:infinity_scrolling_image_gallery/utility/image_api.dart';
 import 'package:infinity_scrolling_image_gallery/types/image.dart'
     as infinity_scrolling_image_gallery;
 import 'package:infinity_scrolling_image_gallery/widget/pull_to_refresh.dart';
+import 'package:redux/redux.dart';
 import 'package:share_plus/share_plus.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(StoreProvider(
+      store: Store<RootState>(
+        rootReducer,
+        initialState: RootState.empty(),
+      ),
+      child: const MainApp()));
 }
 
 class MainApp extends StatefulWidget {
@@ -23,16 +33,9 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   final _api = ImageApi();
 
-  final _images =
-      List<infinity_scrolling_image_gallery.Image>.empty(growable: true);
-
-  bool _loading = false;
-
   bool _debounce = false;
 
   bool _downloadingImage = false;
-
-  int _expandImageIndex = -1;
 
   int _page = 1;
 
@@ -44,26 +47,35 @@ class _MainAppState extends State<MainApp> {
   void initState() {
     super.initState();
 
-    _fetchImages();
-
     _registerScrollListener();
   }
 
-  Future<void> _fetchImages() async {
+  Future<void> _refreshImages() async {
     try {
-      _loading = true;
-      setState(() {});
+      StoreProvider.of<RootState>(context).dispatch(LoadImagesAction());
+
+      final images = await _api.getImages();
+
+      StoreProvider.of<RootState>(context).dispatch(ImagesLoadedAction(images));
+    } catch (error) {
+      debugPrint(error.toString());
+
+      StoreProvider.of<RootState>(context).dispatch(LoadImagesErrorAction());
+    }
+  }
+
+  Future<void> _loadMoreImages() async {
+    try {
+      StoreProvider.of<RootState>(context).dispatch(LoadImagesAction());
 
       final images = await _api.getImages(page: _page);
 
-      _images.addAll(images);
-      _loading = false;
-
-      setState(() {});
+      StoreProvider.of<RootState>(context)
+          .dispatch(LoadMoreImagesAction(images));
     } catch (error) {
       debugPrint(error.toString());
-      _loading = false;
-      setState(() {});
+
+      StoreProvider.of<RootState>(context).dispatch(LoadImagesErrorAction());
     }
   }
 
@@ -83,10 +95,10 @@ class _MainAppState extends State<MainApp> {
           _triggerFetchScrollThreshold * _controller.position.maxScrollExtent;
 
       if (_controller.position.pixels > nextPageTrigger &&
-          !_loading &&
+          !StoreProvider.of<RootState>(context).state.loading &&
           !_debounce) {
         _page += 1;
-        _fetchImages().then((_) {
+        _loadMoreImages().then((_) {
           _debounceScrollHandler();
         }).catchError((_) {
           _debounceScrollHandler();
@@ -201,33 +213,33 @@ class _MainAppState extends State<MainApp> {
   Widget _buildExpandedImage(BuildContext context) {
     return Align(
       alignment: Alignment.bottomCenter,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-        color: _expandImageIndex == -1 ? Colors.transparent : Colors.black,
-        width: MediaQuery.of(context).size.width,
-        height:
-            _expandImageIndex == -1 ? 0 : MediaQuery.of(context).size.height,
-        child: GestureDetector(
-          onPanEnd: (_) => setState(() {
-            _expandImageIndex = -1;
-          }),
-          child: _expandImageIndex != -1
-              ? Stack(
-                  children: [
-                    Center(
-                      child: _buildImage(_images[_expandImageIndex]),
-                    ),
-                    SafeArea(
-                      child: Align(
-                        alignment: Alignment.topRight,
-                        child: _buildImageActionButton(
-                            context, _images[_expandImageIndex]),
+      child: StoreConnector<RootState, ImagesState>(
+        converter: (store) => store.state.images,
+        builder: (context, state) => AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          color: state.image == null ? Colors.transparent : Colors.black,
+          width: MediaQuery.of(context).size.width,
+          height: state.image == null ? 0 : MediaQuery.of(context).size.height,
+          child: GestureDetector(
+            onPanEnd: (_) => StoreProvider.of<RootState>(context)
+                .dispatch(CollapseImageAction()),
+            child: state.image != null
+                ? Stack(
+                    children: [
+                      Center(
+                        child: _buildImage(state.image!),
                       ),
-                    )
-                  ],
-                )
-              : null,
+                      SafeArea(
+                        child: Align(
+                          alignment: Alignment.topRight,
+                          child: _buildImageActionButton(context, state.image!),
+                        ),
+                      )
+                    ],
+                  )
+                : null,
+          ),
         ),
       ),
     );
@@ -235,75 +247,84 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-          appBarTheme: const AppBarTheme(
-              shadowColor: Colors.black, scrolledUnderElevation: 10),
-          colorSchemeSeed: const Color.fromARGB(255, 0, 132, 255),
-          useMaterial3: true),
-      home: Scaffold(
-        appBar: AppBar(
-          shadowColor: Colors.black,
-          title: Title(
-            color: Colors.black,
-            child: const Text("Infinity Scroll Image Gallery"),
+    return StoreConnector<RootState, RootState>(
+      converter: (store) => store.state,
+      onInit: (store) => _refreshImages(),
+      builder: (_, __) => MaterialApp(
+        theme: ThemeData(
+            appBarTheme: const AppBarTheme(
+                shadowColor: Colors.black, scrolledUnderElevation: 10),
+            colorSchemeSeed: const Color.fromARGB(255, 0, 132, 255),
+            useMaterial3: true),
+        home: Scaffold(
+          appBar: AppBar(
+            shadowColor: Colors.black,
+            title: Title(
+              color: Colors.black,
+              child: const Text("Infinity Scroll Image Gallery"),
+            ),
           ),
-        ),
-        body: Builder(builder: (context) {
-          return Stack(
-            children: [
-              Column(
-                children: [
-                  Expanded(
-                    child: PullToRefresh(
-                      disabled: _loading,
-                      triggerThreshold: 300.0,
-                      onRefresh: () {
-                        _images.clear();
-                        _page = 1;
-                        setState(() {});
-                        _fetchImages();
-                      },
-                      child: ListView.builder(
-                        controller: _controller,
-                        itemCount: _images.length,
-                        itemBuilder: (context, index) => Stack(
-                          children: [
-                            InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _expandImageIndex = index;
-                                  });
-                                },
-                                child: _buildImage(_images[index])),
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: _buildImageActionButton(
-                                  context, _images[index]),
-                            )
-                          ],
+          body: Builder(builder: (context) {
+            return Stack(
+              children: [
+                Column(
+                  children: [
+                    Expanded(
+                      child: StoreConnector<RootState, RootState>(
+                        converter: (store) => store.state,
+                        builder: (context, state) => PullToRefresh(
+                          disabled: state.loading,
+                          triggerThreshold: 300.0,
+                          onRefresh: () {
+                            StoreProvider.of<RootState>(context)
+                                .dispatch(RefreshImagesAction());
+
+                            _refreshImages();
+                          },
+                          child: ListView.builder(
+                            controller: _controller,
+                            itemCount: state.images.images.length,
+                            itemBuilder: (context, index) => Stack(
+                              children: [
+                                InkWell(
+                                    onTap: () =>
+                                        StoreProvider.of<RootState>(context)
+                                            .dispatch(ExpandImageAction(index)),
+                                    child: _buildImage(
+                                        state.images.images[index])),
+                                Align(
+                                  alignment: Alignment.topRight,
+                                  child: _buildImageActionButton(
+                                      context, state.images.images[index]),
+                                )
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (_loading)
-                    const LinearProgressIndicator(
-                      backgroundColor: Colors.black,
-                    )
-                ],
-              ),
-              _buildExpandedImage(context),
-              if (_downloadingImage)
-                Positioned.fill(
-                    child: Container(
-                  color: Colors.black.withAlpha(192),
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                )),
-            ],
-          );
-        }),
+                    StoreConnector<RootState, bool>(
+                        converter: (store) => store.state.loading,
+                        builder: (context, loading) => loading
+                            ? const LinearProgressIndicator(
+                                backgroundColor: Colors.black,
+                              )
+                            : const SizedBox.shrink()),
+                  ],
+                ),
+                _buildExpandedImage(context),
+                if (_downloadingImage)
+                  Positioned.fill(
+                      child: Container(
+                    color: Colors.black.withAlpha(192),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )),
+              ],
+            );
+          }),
+        ),
       ),
     );
   }
